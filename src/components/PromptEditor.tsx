@@ -66,6 +66,38 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
         )}
       </AnimatePresence>
 
+      {/* Quick Templates */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+           <Sparkles size={12} className="text-cyan-500" />
+           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Start Templates</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'dashboard', label: 'Fintech Dashboard', icon: '📊' },
+            { id: 'portfolio', label: 'Designer Portfolio', icon: '🎨' },
+            { id: 'ecom', label: 'Luxury E-commerce', icon: '⌚' },
+            { id: 'saas', label: 'SaaS Landing', icon: '🚀' }
+          ].map(template => (
+            <button
+              key={template.id}
+              onClick={() => {
+                const templates: Record<string, string> = {
+                  dashboard: 'Create a premium fintech dashboard with glassmorphism. Include a sidebar, summary cards for balance and ROI, a transaction list with status badges, and a revenue chart.',
+                  portfolio: 'Design a high-end dark-mode designer portfolio. Use a bento-grid project gallery, smooth entrance animations, and a sophisticated typography-focused hero section.',
+                  ecom: 'Build a luxury watch product page. Feature a centered product showcase, detailed specifications grid with icons, and a premium "Add to Cart" interaction.',
+                  saas: 'Create a modern B2B SaaS landing page. Include a hero section with a gradient background, a feature grid with glass effect cards, and a sleek pricing table.'
+                };
+                setPrd(templates[template.id]);
+              }}
+              className="px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-[11px] font-bold text-slate-300 hover:bg-cyan-500/10 hover:border-cyan-500/20 hover:text-cyan-400 transition-all"
+            >
+              <span className="mr-1.5">{template.icon}</span> {template.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Main PRD Input */}
       <div className="flex-1 flex flex-col min-h-0 space-y-3">
         <textarea

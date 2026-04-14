@@ -41,8 +41,8 @@ export default function Home() {
   return (
     <main className="relative min-h-screen flex flex-col p-4 md:p-8 gap-6 z-10">
       {/* Background Decorative Blobs */}
-      <div className="blob top-[-10%] left-[-10%] translate-x-[20%] translate-y-[20%]" />
-      <div className="blob bottom-[-10%] right-[-10%] translate-x-[-20%] translate-y-[-20%] bg-purple-500/10" />
+      <div className="blob blob-1" />
+      <div className="blob blob-2" />
 
       {/* Modern Header */}
       <header className="flex items-center justify-between px-4 py-2">
@@ -67,7 +67,11 @@ export default function Home() {
         <div className="flex items-center gap-3">
           <div className="hidden lg:flex items-center gap-6 px-4 py-2 glass-morphism rounded-full mr-4">
              <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-               <Cpu size={14} className="text-cyan-500" /> {process.env.NEXT_PUBLIC_GEMINI_API_KEY?.startsWith('gsk_') ? 'GROK_BETA' : 'GEMINI_1.5_FLASH'}
+               <Cpu size={14} className="text-cyan-500" /> {
+                 process.env.NEXT_PUBLIC_GEMINI_API_KEY?.startsWith('gsk_') ? 'GROQ_LLAMA_3.3' : 
+                 process.env.NEXT_PUBLIC_GEMINI_API_KEY?.startsWith('xai-') ? 'GROK_BETA' : 
+                 'GEMINI_1.5_FLASH'
+               }
              </div>
              <div className="h-4 w-px bg-white/10" />
              <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">

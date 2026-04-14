@@ -71,16 +71,22 @@ export default MockComponent;
 
     let text = "";
 
-    if (API_KEY.startsWith("gsk_")) {
-      // Logic for xAI (Grok)
-      const grokResponse = await fetch("https://api.x.ai/v1/chat/completions", {
+    if (API_KEY.startsWith("gsk_") || API_KEY.startsWith("xai-")) {
+      const isGroq = API_KEY.startsWith("gsk_");
+      const apiUrl = isGroq
+        ? "https://api.groq.com/openai/v1/chat/completions"
+        : "https://api.x.ai/v1/chat/completions";
+
+      const modelName = isGroq ? "llama-3.3-70b-versatile" : "grok-beta";
+
+      const aiResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${API_KEY}`,
         },
         body: JSON.stringify({
-          model: "grok-beta",
+          model: modelName,
           messages: [
             { role: "system", content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
             { role: "user", content: `PRD contents:\n${prd}` }
@@ -89,12 +95,13 @@ export default MockComponent;
         }),
       });
 
-      if (!grokResponse.ok) {
-        const errorData = await grokResponse.json();
-        throw new Error(`Grok API Error: ${errorData.error?.message || grokResponse.statusText}`);
+      if (!aiResponse.ok) {
+        const errorData = await aiResponse.json();
+        const provider = isGroq ? "Groq" : "xAI";
+        throw new Error(`${provider} API Error: ${errorData.error?.message || aiResponse.statusText}`);
       }
 
-      const data = await grokResponse.json();
+      const data = await aiResponse.json();
       text = data.choices[0].message.content;
     } else {
       // Logic for Google Gemini
@@ -111,8 +118,9 @@ export default MockComponent;
     const code = codeMatch ? codeMatch[1].trim() : text.trim();
 
     return NextResponse.json({ code });
-  } catch (error: any) {
+  } catch (error) {
     console.error("AI Generation failed:", error);
-    return NextResponse.json({ error: error.message || "Failed to generate components" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Failed to generate components";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

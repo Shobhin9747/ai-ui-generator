@@ -20,6 +20,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({ code, isGenerating 
     }
   };
 
+  const encodedCode = typeof window !== 'undefined' ? btoa(unescape(encodeURIComponent(code || ''))) : '';
+
   return (
     <div className="flex flex-col h-full">
       {/* Device Toolbar */}
@@ -96,23 +98,94 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({ code, isGenerating 
                   <!DOCTYPE html>
                   <html>
                     <head>
+                      <meta charset="utf-8">
+                      <script>
+                        window.process = { env: { NODE_ENV: 'production' } };
+                        window.exports = {};
+                        window.module = { exports: window.exports };
+                      </script>
+                      <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+                      <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+                      <script>
+                        window.React = React;
+                        window.ReactDOM = ReactDOM;
+                      </script>
+                      <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
                       <script src="https://cdn.tailwindcss.com"></script>
+                      <script src="https://unpkg.com/framer-motion@11.0.8/dist/framer-motion.js"></script>
+                      <script src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.min.js"></script>
                       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
                       <style>
-                        body { font-family: 'Inter', sans-serif; background: white; margin: 0; padding: 0; }
+                        body { 
+                          font-family: 'Inter', sans-serif; 
+                          background: white; 
+                          margin: 0; 
+                          padding: 0; 
+                          overflow-x: hidden;
+                        }
+                        #root { min-height: 100vh; }
+                        ::-webkit-scrollbar { width: 6px; }
+                        ::-webkit-scrollbar-track { background: transparent; }
+                        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
                       </style>
                     </head>
                     <body>
-                      <div id="root">
-                        <!-- We show the raw code as a placeholder since we can't eval imports safely in this context -->
-                        <div class="p-12 text-center flex flex-col items-center justify-center min-h-screen gap-4">
-                           <div class="text-xs font-black uppercase tracking-widest text-slate-400">Synthesized Component Ready</div>
-                           <div class="text-[10px] font-mono text-slate-500 bg-slate-50 p-6 rounded-2xl border border-slate-100 max-w-md break-all">
-                              ${code.substring(0, 500)}...
-                           </div>
-                           <div class="text-xs text-slate-400 mt-4 italic">Note: In this dev environment, view Source Code for full logic.</div>
-                        </div>
-                      </div>
+                      <div id="root"></div>
+                      <script type="text/babel">
+                        const { useState, useEffect, useMemo, useCallback, useRef, Fragment, forwardRef } = React;
+                        const FM = window.Motion || window.FramerMotion || window.framerMotion;
+                        const { motion, AnimatePresence, LayoutGroup } = FM || {};
+                        
+                        const Lucide = window.LucideReact || window.lucide || window.Lucide;
+                        if (Lucide) {
+                          Object.entries(Lucide).forEach(([name, component]) => {
+                            window[name] = component;
+                          });
+                        }
+
+                        try {
+                          const rawCode = decodeURIComponent(escape(atob("${encodedCode}")));
+                          
+                          // Robustly strip imports and exports
+                          let processedCode = rawCode.split('\\n')
+                            .filter(line => !line.trim().startsWith('import ') && !line.trim().startsWith('import{'))
+                            .join('\\n');
+                          
+                          processedCode = processedCode.replace(/export\\s+default\\s+/g, 'module.exports.default = ');
+                          processedCode = processedCode.replace(/export\\s+const\\s+/g, 'const ');
+                          processedCode = processedCode.replace(/export\\s+function\\s+/g, 'function ');
+                          processedCode = processedCode.replace(/export\\s+class\\s+/g, 'class ');
+
+                          const transpiled = Babel.transform(processedCode, { 
+                            presets: ['react'],
+                            filename: 'preview.tsx'
+                          }).code;
+                          
+                          eval(transpiled);
+
+                          const AppRoot = module.exports.default || Object.values(module.exports)[0];
+                          
+                          if (AppRoot) {
+                            ReactDOM.createRoot(document.getElementById('root')).render(
+                              <React.StrictMode>
+                                <AppRoot />
+                              </React.StrictMode>
+                            );
+                          } else {
+                            throw new Error("Could not find a React component to render. Ensure your component is exported or defined correctly.");
+                          }
+
+                        } catch (err) {
+                          console.error("Preview Render Error:", err);
+                          document.getElementById('root').innerHTML = \`
+                            <div style="color: #ef4444; padding: 3rem; font-family: system-ui, sans-serif; text-align: center;">
+                              <h3 style="margin-bottom: 1rem;">Rendering Failed</h3>
+                              <p style="font-size: 14px; opacity: 0.8; margin-bottom: 2rem;">\${err.message}</p>
+                              <pre style="background: rgba(239, 68, 68, 0.05); padding: 1.5rem; border-radius: 12px; text-align: left; font-size: 11px; overflow: auto; border: 1px solid rgba(239, 68, 68, 0.1);">\${err.stack || err.message}</pre>
+                            </div>
+                          \`;
+                        }
+                      </script>
                     </body>
                   </html>
                 `}
