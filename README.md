@@ -2,6 +2,8 @@
 
 A high-performance, distraction-free dashboard for generating premium React components using an AI-driven agentic pipeline. Describe your requirements (PRD), and watch as the system synthesizes, transpiles, and renders your UI in real-time.
 
+![Pipeline Demo](file:///d:/ai-ui-generator/ai-ui-generator/SpecToUIAgent.mp4)
+
 ---
 
 ## ✨ Features
