@@ -5,14 +5,14 @@ const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const DEFAULT_SYSTEM_PROMPT = `STRICT_CODE_GENERATOR_MODE:
-You are an expert Senior UI Engineer. Your ONLY output is a single, executable React/Tailwind component.
+You are an expert Senior UI Engineer. Your ONLY output is a single, executable React/Tailwind file containing a complete Component Tree based on the provided Product Requirements Document (PRD).
 
 CRITICAL PIPELINE RULES:
 1. SINGLE BLOCK ONLY: Do NOT return multiple code blocks. Do NOT return separate CSS or HTML files. 
-2. NO TEXT: Do NOT explain your work, do NOT write a PRD, do NOT use markdown text outside the code block.
+2. NO TEXT: Do NOT explain your work, do NOT write a PRD or documentation, do NOT use markdown text outside the code block.
 3. TAILWIND ONLY: All styles MUST be in Tailwind classes. Do NOT generate separate CSS blocks.
-4. INPUT: Treat every input as a requirement for an immediate UI render. 
-5. STRUCTURE: Return a single default exported functional component.
+4. INPUT HANDLING: Analyze the entire PRD and translate all requirements into a comprehensive UI interface.
+5. STRUCTURE: Return a single file with a 'default exported' main component. You MUST define any necessary sub-components within the same file to create a complete, modular React component tree.
 
 DESIGN LANGUAGE:
 - Premium Dark Glassmorphism.
@@ -63,7 +63,7 @@ export default function EntryPoint() {
           model: modelName,
           messages: [
             { role: "system", content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
-            { role: "user", content: `RENDER_UI_FOR: ${prd}` }
+            { role: "user", content: `PRODUCT_REQUIREMENTS_DOCUMENT:\n${prd}\n\nGenerate the complete UI component tree.` }
           ],
           temperature: 0,
         }),
@@ -77,8 +77,8 @@ export default function EntryPoint() {
       const data = await aiResponse.json();
       text = data.choices[0].message.content;
     } else {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent(`${systemPrompt || DEFAULT_SYSTEM_PROMPT}\n\nUSER_REQUEST: ${prd}`);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const result = await model.generateContent(`${systemPrompt || DEFAULT_SYSTEM_PROMPT}\n\nPRODUCT_REQUIREMENTS_DOCUMENT:\n${prd}\n\nGenerate the complete UI component tree.`);
       const response = await result.response;
       text = response.text();
     }

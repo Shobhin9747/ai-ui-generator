@@ -85,11 +85,11 @@ export default function Home() {
     if (!prd.trim()) return;
 
     setIsGenerating(true);
-    setStatusMessage('ARCHITECT: Planning structure...');
+    setStatusMessage('ARCHITECT: Analyzing PRD Document...');
 
     try {
       await new Promise(r => setTimeout(r, 1000));
-      setStatusMessage('DEVELOPER: Synthesizing React components...');
+      setStatusMessage('DEVELOPER: Generating Component Tree...');
 
       const response = await fetch('/api/generate', {
         method: 'POST',
