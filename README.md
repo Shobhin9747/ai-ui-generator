@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌌 Agentic AI UI Generator
 
-## Getting Started
+A high-performance, distraction-free dashboard for generating premium React components using an AI-driven agentic pipeline. Describe your requirements (PRD), and watch as the system synthesizes, transpiles, and renders your UI in real-time.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## ✨ Features
+
+- **🚀 Real-time Synthesis**: Live transpilation using Babel-standalone for immediate visual feedback.
+- **💎 Premium Aesthetics**: Built-in design system supporting "Dark Glassmorphism" and sleek animations.
+- **🤖 Multi-Model Pipeline**: Support for Google Gemini 1.5, Groq (Llama 3), and xAI (Grok).
+- **📝 PRD-Driven**: Focused on structured requirements rather than simple prompts.
+- **💾 Design History**: Local persistence for your generation history and design iterations.
+- **🛠 Code Transparency**: Toggle between live preview and raw source code with one click.
+
+---
+
+## 🏗 Architecture
+
+The system utilizes a split-execution pipeline where prompt synthesis happens on the server, while transpilation and rendering occur entirely in the browser for maximum responsiveness.
+
+```mermaid
+graph TD
+    User([User]) -->|Inputs PRD| PromptEditor[Prompt Editor]
+    PromptEditor -->|PRD + System Prompt| API[API Route /api/generate]
+    
+    subgraph "Server (Next.js Edge/Node)"
+        API -->|Prompt Synthesis| LLM_Router{LLM Router}
+        LLM_Router -->|Generate Content| Gemini[Google Gemini 1.5]
+        LLM_Router -->|Chat Completion| Groq[Groq Llama 3]
+        LLM_Router -->|Chat Completion| xAI[xAI Grok]
+        Gemini -->|React Code| API
+        Groq -->|React Code| API
+        xAI -->|React Code| API
+    end
+    
+    API -->|JSON with Code| Home[Home Page State]
+    
+    subgraph "Browser (Client Rendering)"
+        Home -->|Code State| ComponentPreview[Component Preview]
+        Home -->|Code State| CodeExporter[Code Viewer]
+        
+        ComponentPreview -->|Raw String| Babel[Babel Standalone]
+        Babel -->|Transpiled JS| ShadowDOM[Render Sandbox/iFrame]
+    end
+    
+    style User fill:#22d3ee,stroke:#22d3ee,color:#000
+    style API fill:#a855f7,stroke:#a855f7,color:#fff
+    style LLM_Router fill:#1e293b,stroke:#a855f7,color:#fff
+    style Babel fill:#facc15,stroke:#facc15,color:#000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠 Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React, Next.js 15, Tailwind CSS |
+| **Runtime** | Babel Standalone (In-browser Transpilation) |
+| **Styling** | Vanilla CSS, Framer Motion (Animations) |
+| **Backend** | Next.js API Routes (Edge Ready) |
+| **AI Models** | Google Gemini 1.5 Flash, Llama 3.3 (via Groq), Grok Beta (via xAI) |
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. Prerequisite: API Keys
+Create a `.env.local` file in the root directory and add one of the following:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_key_here
+# OR
+# NEXT_PUBLIC_GEMINI_API_KEY=your_groq_key_here (The system auto-detects based on prefix)
+```
 
-## Deploy on Vercel
+### 2. Install Dependencies
+```bash
+npm install
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 3. Run Development Server
+```bash
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open [http://localhost:3000](http://localhost:3000) to start generating.
+
+---
+
+## 📜 License
+This project is licensed under the MIT License.
