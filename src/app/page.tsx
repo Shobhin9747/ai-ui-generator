@@ -9,6 +9,7 @@ interface HistoryItem {
   id: string;
   code: string;
   prd: string;
+  structuredJson?: any;
   timestamp: number;
   title: string;
 }
@@ -27,6 +28,11 @@ const Icons = {
   Cpu: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
       <rect width="16" height="16" x="4" y="4" rx="2" /><rect width="6" height="6" x="9" y="9" rx="1" /><path d="M15 2v2" /><path d="M15 20v2" /><path d="M2 15h2" /><path d="M20 15h2" /><path d="M9 2v2" /><path d="M9 20v2" /><path d="M2 9h2" /><path d="M20 9h2" />
+    </svg>
+  ),
+  Database: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
     </svg>
   ),
   Layers: () => (
@@ -58,61 +64,83 @@ const Icons = {
 
 export default function Home() {
   const [prd, setPrd] = useState('');
+  const [structuredJson, setStructuredJson] = useState<string>('');
   const [generatedCode, setGeneratedCode] = useState('');
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [activeTab, setActiveTab] = useState<'analyzer' | 'preview' | 'code'>('preview');
+  
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('ai_ui_history');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setHistory(parsed);
-      } catch (e) {
-        console.error("Failed to load history", e);
-      }
-    }
+    // Load Server Memory
+    fetch('/api/memory')
+      .then(r => r.json())
+      .then(d => {
+        if (d.history) setHistory(d.history);
+      })
+      .catch(console.error);
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('ai_ui_history', JSON.stringify(history));
-  }, [history]);
 
   const handleGenerate = async () => {
     if (!prd.trim()) return;
 
     setIsGenerating(true);
-    setStatusMessage('ARCHITECT: Analyzing PRD Document...');
+    setStatusMessage('AGENT 1 [PRD Analyzer]: Extracting Requirements...');
+    setActiveTab('analyzer');
+    setStructuredJson('');
+    setGeneratedCode('');
 
     try {
-      await new Promise(r => setTimeout(r, 1000));
-      setStatusMessage('DEVELOPER: Generating Component Tree...');
-
-      const response = await fetch('/api/generate', {
+      // Step 1: Analyzer Agent Call
+      const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prd }),
       });
+      const analyzeData = await analyzeRes.json();
+      
+      if (!analyzeRes.ok) throw new Error(analyzeData.error);
+      
+      setStructuredJson(JSON.stringify(analyzeData.data, null, 2));
 
-      const data = await response.json();
+      setStatusMessage('AGENT 2 [UI Generator]: Synthesizing Components...');
+      
+      // Step 2: Generator Agent Call
+      const generateRes = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ structuredJson: analyzeData.data }),
+      });
+      const generateData = await generateRes.json();
+      
+      if (!generateRes.ok) throw new Error(generateData.error);
 
-      if (data.code) {
-        setStatusMessage('REVIEWER: Polishing design tokens...');
+      if (generateData.code) {
+        setStatusMessage('TOOLS: Preview & Export Functions Executed...');
         await new Promise(r => setTimeout(r, 800));
 
-        setGeneratedCode(data.code);
+        setGeneratedCode(generateData.code);
         setActiveTab('preview');
 
         const newItem: HistoryItem = {
           id: Math.random().toString(36).substring(7),
-          code: data.code,
+          code: generateData.code,
+          structuredJson: analyzeData.data,
           prd: prd,
           timestamp: Date.now(),
           title: prd.slice(0, 30) + (prd.length > 30 ? '...' : '')
         };
+        
+        // Save Server Memory
+        await fetch('/api/memory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item: newItem })
+        });
+
         setHistory(prev => [newItem, ...prev]);
         setSelectedHistoryId(newItem.id);
       }
@@ -127,13 +155,22 @@ export default function Home() {
 
   const loadFromHistory = (item: HistoryItem) => {
     setPrd(item.prd);
+    if (item.structuredJson) setStructuredJson(JSON.stringify(item.structuredJson, null, 2));
     setGeneratedCode(item.code);
     setSelectedHistoryId(item.id);
     setActiveTab('preview');
   };
 
-  const deleteHistoryItem = (id: string, e: React.MouseEvent) => {
+  const deleteHistoryItem = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Delete from Server Memory
+    await fetch('/api/memory', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    
     setHistory(prev => prev.filter(item => item.id !== id));
     if (selectedHistoryId === id) setSelectedHistoryId(null);
   };
@@ -165,7 +202,7 @@ export default function Home() {
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-4 px-4 py-1.5 glass-morphism rounded-xl border border-white/5">
             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              <Icons.Cpu /> ENGINE_V2.0
+              <Icons.Cpu /> AGENT_SWARM_V1.0
             </div>
           </div>
         </div>
@@ -215,11 +252,20 @@ export default function Home() {
           {/* PREVIEW/CODE PANEL (Right) */}
           <section className="flex-1 flex flex-col min-w-0 bg-black/20">
             {/* Nav Tabs */}
-            <div className="h-14 flex items-center justify-between px-6 border-b border-white/5 bg-black/40 shrink-0">
-              <div className="flex p-1 bg-[#10141d] rounded-xl border border-white/10">
+            <div className="h-14 overflow-x-auto custom-scrollbar flex items-center justify-between px-6 border-b border-white/5 bg-black/40 shrink-0">
+              <div className="flex p-1 bg-[#10141d] rounded-xl border border-white/10 shrink-0">
+                <button
+                  onClick={() => setActiveTab('analyzer')}
+                  className={`flex items-center gap-2 px-5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'analyzer'
+                    ? 'bg-orange-500 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]'
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                    }`}
+                >
+                  <Icons.Database /> Analyzer JSON
+                </button>
                 <button
                   onClick={() => setActiveTab('preview')}
-                  className={`flex items-center gap-2 px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'preview'
+                  className={`flex items-center gap-2 px-5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'preview'
                     ? 'bg-cyan-500 text-white shadow-[0_0_20px_rgba(34,211,238,0.3)]'
                     : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                     }`}
@@ -228,27 +274,39 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => setActiveTab('code')}
-                  className={`flex items-center gap-2 px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'code'
+                  className={`flex items-center gap-2 px-5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'code'
                     ? 'bg-purple-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)]'
                     : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                     }`}
                 >
-                  <Icons.Terminal /> Code
+                  <Icons.Terminal /> Export
                 </button>
               </div>
 
-              <div className="hidden md:flex items-center gap-2 text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                <Icons.Sparkles /> Synthesis v2.1
+              <div className="hidden lg:flex items-center gap-2 text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] bg-white/5 px-3 py-1.5 rounded-full border border-white/5 whitespace-nowrap ml-4">
+                <Icons.Sparkles /> Pipeline Active
               </div>
             </div>
 
             {/* Viewport Content */}
             <div className="flex-1 relative overflow-hidden">
-              {activeTab === 'preview' ? (
+              {activeTab === 'analyzer' && (
+                <div className="h-full w-full p-6 overflow-y-auto custom-scrollbar animate-in fade-in duration-500 bg-[#0a0a0f]">
+                  <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                    Agent 1 Output (Structured Memory)
+                  </h2>
+                  <pre className="text-sm text-cyan-300 font-mono whitespace-pre-wrap">
+                    {structuredJson ? structuredJson : "// Waiting for Analyzer Agent output..."}
+                  </pre>
+                </div>
+              )}
+              {activeTab === 'preview' && (
                 <div className="h-full animate-in fade-in duration-500">
                   <ComponentPreview code={generatedCode} isGenerating={isGenerating} />
                 </div>
-              ) : (
+              )}
+              {activeTab === 'code' && (
                 <div className="h-full animate-in scale-in duration-500">
                   <CodeExporter code={generatedCode} />
                 </div>
